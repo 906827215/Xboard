@@ -160,6 +160,7 @@ class OrderController extends Controller
     {
         $tradeNo = $request->input('trade_no');
         $method = $request->input('method');
+        $domain_url = $request->input('domain_url');
         $order = Order::where('trade_no', $tradeNo)
             ->where('user_id', $request->user['id'])
             ->where('status', 0)
@@ -189,7 +190,8 @@ class OrderController extends Controller
             'trade_no' => $tradeNo,
             'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
             'user_id' => $order->user_id,
-            'stripe_token' => $request->input('token')
+            'stripe_token' => $request->input('token'),
+            'domain_url' => $domain_url
         ]);
         return response([
             'type' => $result['type'],

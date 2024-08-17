@@ -45,10 +45,12 @@ class PaymentService
             $parseUrl = parse_url($notifyUrl);
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
         }
-        
+
         return $this->payment->pay([
             'notify_url' => $notifyUrl,
-            'return_url' => url('/#/order/' . $order['trade_no']),
+//            'return_url' => url('/#/order/' . $order['trade_no']),
+            # 新客户端返回
+            'return_url' => rtrim($order['domain_url'], '/') . '/#/list/searchTableDetails?orderId=' . $order['trade_no'],
             'trade_no' => $order['trade_no'],
             'total_amount' => $order['total_amount'],
             'user_id' => $order['user_id'],

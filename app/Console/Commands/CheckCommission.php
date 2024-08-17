@@ -51,7 +51,8 @@ class CheckCommission extends Command
             Order::where('commission_status', 0)
                 ->where('invite_user_id', '!=', NULL)
                 ->where('status', 3)
-                ->where('updated_at', '<=', strtotime('-3 day', time()))
+//                ->where('updated_at', '<=', strtotime('-3 day', time()))
+                ->where('updated_at', '<=', time())
                 ->update([
                     'commission_status' => 1
                 ]);

@@ -133,14 +133,8 @@ class InviteController extends Controller
     {
         $user = User::find($request->user['id'])
             ->load(['codes' => fn($query) => $query->where('status', 0)]);
-        $start = $request->getParam('start');
-        $end = $request->getParam('end');
-        $startDateTime = new DateTime($start);
-        $endDateTime = new DateTime($end);
-        $startTimestamp = $startDateTime->getTimestamp();;
-        $endOfTimestamp = $endDateTime->getTimestamp();
-
-
+        $startTimestamp = $request->input('start');
+        $endOfTimestamp = $request->input('end');
 
         # 首充
         $pay_num = CommissionLog::join('v2_user', 'v2_commission_log.user_id', '=', 'v2_user.id')
@@ -153,8 +147,12 @@ class InviteController extends Controller
         # 新注册
         $reg_num = User::where('invite_user_id', $user->id)
             ->whereBetween('created_at', [$startTimestamp, $endOfTimestamp])
-            ->count();
-        $rate = number_format($pay_num / $reg_num * 100, 2);
+            ->count('id');
+        if (!$pay_num){
+            $rate = 0;
+        }else{
+            $rate = number_format($pay_num / $reg_num * 100, 2);
+        }
 
         $amount = (int)CommissionLog::where('invite_user_id', $user->id)
             ->whereBetween('created_at', [$startTimestamp, $endOfTimestamp])
@@ -162,11 +160,10 @@ class InviteController extends Controller
         $stat = [
             $pay_num,
             $reg_num,
+            $amount,
             $rate,
-            $amount
         ];
         $data = [
-            'codes' => InviteCodeResource::collection($user->codes),
             'stat' => $stat
         ];
         return $this->success($data);

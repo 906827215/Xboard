@@ -139,6 +139,14 @@ class AdminRoute
             $router->get ('/theme/getThemes', 'V1\\Admin\\ThemeController@getThemes');
             $router->post('/theme/saveThemeConfig', 'V1\\Admin\\ThemeController@saveThemeConfig');
             $router->post('/theme/getThemeConfig', 'V1\\Admin\\ThemeController@getThemeConfig');
+            // Commision
+            $router->get ('/commission/fetch', 'V1\\Admin\\CommissionConfController@fetch');
+            $router->post('/commission/save', 'V1\\Admin\\CommissionConfController@save');
+            $router->post('/commission/drop', 'V1\\Admin\\CommissionConfController@drop');
+            $router->post('/commission/show', 'V1\\Admin\\CommissionConfController@show');
+            // CommisionLogDeduc
+            $router->get ('/dommisionLogDeduc/fetch', 'V1\\Admin\\CommissionLogDeducController@fetch');
+            $router->post('/dommisionLogDeduc/show', 'V1\\Admin\\CommissionLogDeducController@show');
         });
     }
 }

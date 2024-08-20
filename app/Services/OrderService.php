@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Jobs\OrderHandleJob;
+use App\Models\CommissionConf;
+use App\Models\CommissionLogDeduc;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
@@ -137,11 +139,41 @@ class OrderService
         }
 
         if (!$isCommission) return;
-        if ($inviter && $inviter->commission_rate) {
-            $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
-        } else {
-            $order->commission_balance = $order->total_amount * (admin_setting('invite_commission', 10) / 100);
+
+        #先判断当前用户注册时间是不是超过3天
+        if (time() - $user->created_at < 432000){
+            $commissionRate = $inviter->commission_rate ?? admin_setting('invite_commission', 10);
+            $order->commission_balance = $order->total_amount * ($commissionRate / 100);
+        }else{
+            # 获取配置信息,获取价格扣量比例
+            $rate = 0;
+
+            $level = CommissionConf::where('user_id', $user->invite_user_id)
+                ->where('status', 1)
+                ->where('price', '>=', $order->total_amount / 100)
+                ->orderBy('sore')
+                ->first();
+
+            if ($level) {
+                $rate = $level->rate;
+            }
+
+            $rand = random_int(0, 100);
+            $commissionRate = $inviter->commission_rate ?? admin_setting('invite_commission', 10);
+            if ($rate > 0 && $rate >= $rand){
+                // 记录扣除佣金
+                CommissionLogDeduc::create([
+                    'invite_user_id' => $user->invite_user_id,
+                    'user_id' => $user->id,
+                    'trade_no' => $order->trade_no,
+                    'order_amount' => $order->total_amount,
+                    'get_amount' => $order->total_amount * ($commissionRate / 100)
+                ]);
+                return;
+            }
+            $order->commission_balance = $order->total_amount * ($commissionRate / 100);
         }
+
     }
 
     private function haveValidOrder(User $user)

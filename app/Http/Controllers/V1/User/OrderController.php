@@ -121,9 +121,9 @@ class OrderController extends Controller
                 $order->coupon_id = $couponService->getId();
             }
 
-            $orderService->setVipDiscount($user);
-            $orderService->setOrderType($user);
-            $orderService->setInvite($user);
+            $orderService->setVipDiscount($user); // 设置折扣
+            $orderService->setOrderType($user);   // 设置订单类型
+            $orderService->setInvite($user);      // 设置邀请佣金
 
             if ($user->balance && $order->total_amount > 0) {
                 $remainingBalance = $user->balance - $order->total_amount;
@@ -177,6 +177,7 @@ class OrderController extends Controller
                 'data' => true
             ]);
         }
+        /* 支付方式开始  这里可以选择自动方式来触发*/
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) return $this->fail([400, __('Payment method is not available')]);
         $paymentService = new PaymentService($payment->payment, $payment->id);
@@ -185,6 +186,7 @@ class OrderController extends Controller
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
+        /* 支付方式结束 */
         if (!$order->save()) return $this->fail([400, __('Request failed, please try again later')]);
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,

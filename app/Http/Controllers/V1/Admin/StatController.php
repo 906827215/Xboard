@@ -24,15 +24,75 @@ class StatController extends Controller
 {
     public function getOverride(Request $request)
     {
+        # 需要添加今日和昨日的支付通道总金额
+        $yesterday = strtotime('yesterday 00:00:00');
+        $today_start = strtotime(date('Y-m-d'));
+
+        $now = time();
+        $now_year_time = $now + 15552000;
+
+        # 今日支付通统计
+        $today_list = DB::table('v2_payment')
+            ->leftJoin('v2_order', function ($join) use ($today_start, $now) {
+                $join->on('v2_payment.id', '=', 'v2_order.payment_id')
+                    ->whereBetween('v2_order.created_at', [$today_start, $now])
+                    ->whereNotIn('v2_order.status', [0, 2]);
+            })
+            ->select('v2_payment.id as channel_id', 'v2_payment.name as channel_name')
+            ->selectRaw('COALESCE(SUM(v2_order.total_amount), 0)  as total_amount')
+            ->groupBy('v2_payment.id', 'v2_payment.name')
+            ->get();
+
+        # 昨日支付通道统计
+        $yesterday_list = DB::table('v2_payment')
+            ->leftJoin('v2_order', function ($join) use ($yesterday, $today_start) {
+                $join->on('v2_payment.id', '=', 'v2_order.payment_id')
+                    ->whereBetween('v2_order.created_at', [$yesterday, $today_start])
+                    ->whereNotIn('v2_order.status', [0, 2]);
+            })
+            ->select('v2_payment.id as channel_id', 'v2_payment.name as channel_name')
+            ->selectRaw('COALESCE(SUM(v2_order.total_amount), 0)  as total_amount')
+            ->groupBy('v2_payment.id', 'v2_payment.name')
+            ->get();
+
         return [
             'data' => [
-                'month_income' => Order::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
+                # 流水
+                'day_income' => Order::where('created_at', '>=', strtotime(date('Y-m-d')))
+                    ->where('created_at', '<', $now)
                     ->whereNotIn('status', [0, 2])
                     ->sum('total_amount'),
+                'last_day_income' => Order::where('created_at', '>=', strtotime('yesterday 00:00:00'))
+                    ->where('created_at', '<', strtotime('today 00:00:00'))
+                    ->whereNotIn('status', [0, 2])
+                    ->sum('total_amount'),
+                'month_income' => Order::where('created_at', '>=', strtotime(date('Y-m-1')))
+                    ->where('created_at', '<', $now)
+                    ->whereNotIn('status', [0, 2])
+                    ->sum('total_amount'),
+                'last_month_income' => Order::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
+                    ->where('created_at', '<', strtotime(date('Y-m-1')))
+                    ->whereNotIn('status', [0, 2])
+                    ->sum('total_amount'),
+                'total_income' => Order::whereNotIn('status', [0, 2])
+                    ->sum('total_amount'),
+
+                # 佣金
+                'commission_month_payout' => CommissionLog::where('created_at', '>=', strtotime(date('Y-m-1')))
+                    ->where('created_at', '<', $now)
+                    ->sum('get_amount'),
+                'commission_last_month_payout' => CommissionLog::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
+                    ->where('created_at', '<', strtotime(date('Y-m-1')))
+                    ->sum('get_amount'),
+                # 注册
                 'month_register_total' => User::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
+                    ->where('created_at', '<', $now)
                     ->count(),
+                'last_register_total' => User::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
+                    ->where('created_at', '<', strtotime(date('Y-m-1')))
+                    ->count(),
+
+                # 工单和待确认佣金
                 'ticket_pending_total' => Ticket::where('status', 0)
                     ->count(),
                 'commission_pending_total' => Order::where('commission_status', 0)
@@ -40,20 +100,33 @@ class StatController extends Controller
                     ->whereNotIn('status', [0, 2])
                     ->where('commission_balance', '>', 0)
                     ->count(),
-                'day_income' => Order::where('created_at', '>=', strtotime(date('Y-m-d')))
-                    ->where('created_at', '<', time())
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'last_month_income' => Order::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
-                    ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'commission_month_payout' => CommissionLog::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
-                    ->sum('get_amount'),
-                'commission_last_month_payout' => CommissionLog::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
-                    ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->sum('get_amount'),
+                'today_list' => $today_list,
+                'yesterday_list' => $yesterday_list,
+                'pay_num' => User::whereBetween('created_at', [strtotime(date('Y-m-d')), $now])
+                    ->whereNotNull('plan_id')
+                    ->count('id'),
+                'reg_num' => User::whereBetween('created_at', [strtotime(date('Y-m-d')), $now])->count('id'),
+                'last_pay_num' => User::where('created_at', '>=', strtotime('yesterday 00:00:00'))
+                    ->where('created_at', '<', strtotime('today 00:00:00'))
+                    ->whereNotNull('plan_id')
+                    ->count('id'),
+                'last_reg_num' => User::where('created_at', '>=', strtotime('yesterday 00:00:00'))
+                    ->where('created_at', '<', strtotime('today 00:00:00'))
+                    ->count('id'),
+                'plan_nums' => User::whereNotNull('plan_id')->where('expired_at', '>', $now)->count('id'),
+                'plan1_nums' => User::where('plan_id','=', 1)->where('expired_at', '>=', $now)->count('id'),
+                'plan1_year_nums' => User::where('plan_id','=', 1)->where('expired_at', '>=', $now_year_time)->count('id'),
+                'plan2_nums' => User::where('plan_id','=', 2)->where('expired_at', '>', $now)->count('id'),
+                'plan2_year_nums' => User::where('plan_id','=', 2)->where('expired_at', '>=', $now_year_time)->count('id'),
+                'plan3_nums' => User::where('plan_id','=', 3)->where('expired_at', '>', $now)->count('id'),
+                'plan3_year_nums' => User::where('plan_id','=', 3)->where('expired_at', '>=', $now_year_time)->count('id'),
+                'plan4_nums' => User::where('plan_id','=', 4)->where('expired_at', '>', $now)->count('id'),
+                'plan4_year_nums' => User::where('plan_id','=', 5)->where('expired_at', '>=', $now_year_time)->count('id'),
+                'plan5_nums' => User::where('plan_id','=', 5)->where('expired_at', '>', $now)->count('id'),
+                'plan5_year_nums' => User::where('plan_id','=', 5)->where('expired_at', '>=', $now_year_time)->count('id'),
+                'plan6_nums' => User::where('plan_id','=', 7)->where('expired_at', '>', $now)->count('id'),
+                'plan6_year_nums' => User::where('plan_id','=', 7)->where('expired_at', '>=', $now_year_time)->count('id'),
+
             ]
         ];
     }
@@ -193,9 +266,9 @@ class StatController extends Controller
             foreach ($todayTraffics as $todayTraffic){
                 $todayTraffic['server_rate'] = number_format($todayTraffic['server_rate'], 2);
                 $records->prepend($todayTraffic);
-            } 
+            }
         };
-        
+
         return [
             'data' => $records,
             'total' => $total + count($todayTraffics),

@@ -147,6 +147,7 @@ class AdminRoute
             // CommisionLogDeduc
             $router->get ('/dommisionLogDeduc/fetch', 'V1\\Admin\\CommissionLogDeducController@fetch');
             $router->post('/dommisionLogDeduc/show', 'V1\\Admin\\CommissionLogDeducController@show');
+            $router->get('/dommisionLogDeduc/total', 'V1\\Admin\\CommissionLogDeducController@total');
         });
     }
 }

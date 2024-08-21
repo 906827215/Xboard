@@ -29,6 +29,19 @@ class CommissionLogDeducController extends Controller
         ]);
     }
 
+    public function total(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|integer'
+        ]);
+        $total = CommissionLogDeduc::where('user_id', $request->input('user_id'))
+            ->sum('get_amount');
+        if (!$total) {
+            return $this->fail([400202,'佣金扣除记录不存在']);
+        }
+        return $this->success($total);
+    }
+
     public function show(Request $request)
     {
         $request->validate([
@@ -43,5 +56,7 @@ class CommissionLogDeducController extends Controller
         }
         return $this->success($commissionLogDeduc);
     }
+
+
 
 }

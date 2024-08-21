@@ -34,7 +34,7 @@ class CommissionLogDeducController extends Controller
         $request->validate([
             'user_id' => 'required|integer'
         ]);
-        $total = CommissionLogDeduc::where('user_id', $request->input('user_id'))
+        $total = CommissionLogDeduc::where('invite_user_id', $request->input('user_id'))
             ->sum('get_amount');
         if (!$total) {
             return $this->fail([400202,'佣金扣除记录不存在']);

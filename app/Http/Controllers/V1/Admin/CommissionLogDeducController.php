@@ -18,7 +18,7 @@ class CommissionLogDeducController extends Controller
         $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
 
-        $builder = CommissionLogDeduc::orderBy($sort, $sortType)->where('user_id', $request->input('user_id'));
+        $builder = CommissionLogDeduc::orderBy($sort, $sortType)->where('invite_user_id', $request->input('user_id'));
 
         $total = $builder->count();
         $commissionLogDeduc = $builder->forPage($current, $pageSize)

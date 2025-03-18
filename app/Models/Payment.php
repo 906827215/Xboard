@@ -14,4 +14,11 @@ class Payment extends Model
         'updated_at' => 'timestamp',
         'config' => 'array'
     ];
+
+    public function orders()
+    {
+
+        return $this->hasMany(Order::class, 'id');
+
+    }
 }

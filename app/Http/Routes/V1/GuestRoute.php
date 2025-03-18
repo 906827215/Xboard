@@ -10,6 +10,8 @@ class GuestRoute
         $router->group([
             'prefix' => 'guest'
         ], function ($router) {
+            // server
+            $router->get ('/servers/fetch', 'V1\\Guest\\ServerController@fetch');
             // Plan
             $router->get ('/plan/fetch', 'V1\\Guest\\PlanController@fetch');
             // Telegram

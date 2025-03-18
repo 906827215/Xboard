@@ -141,7 +141,7 @@ class OrderService
         if (!$isCommission) return;
 
         #先判断当前用户注册时间是不是超过3天
-        if (time() - $user->created_at < 432000){
+        if (time() - $user->created_at < 259200){
             $commissionRate = $inviter->commission_rate ?? admin_setting('invite_commission', 10);
             $order->commission_balance = $order->total_amount * ($commissionRate / 100);
         }else{
